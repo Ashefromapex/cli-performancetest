@@ -18,7 +18,6 @@ int pinToCore(int coreId)
 #include <pthread.h>
 #include <pthread/qos.h>
 #include <mach/mach.h>
-#include <mach/thread_act.h>
 
 void pinToCore(int coreId)
 {
@@ -37,7 +36,7 @@ void pinToCore(int coreId)
 
 #endif
 
-double runMatrixMul(int interations, int n);
+double runMatrixMul(int iterations, int n);
 
 int main(void)
 {
