@@ -3,9 +3,11 @@
 #include <math.h>
 #include <time.h>
 #include <pthread.h>
+#include <unistd.h>
 
 #ifdef __linux__
 #include <sched.h>
+#include <D_GNU_SOURCE>
 
 int pinToCore(int coreId)
 {
@@ -32,9 +34,6 @@ void pinToCore(int coreId)
         printf("pthread_set_qos_class_self_np success\n");
     }
 }
-//stop hopping between clusters (p0 and p1) --> only use shared l2 cache????
-
-
 #endif
 
 typedef struct
@@ -51,16 +50,33 @@ double runMatrixMul(int iterations, int n);
 void initRandom(double* M, int iterations);
 void* multiMatrixMul(void* arg);
 
-int main(void)
+int main(int argc, char** argv)
 {
+    int nthreads = 1;
+    int n = 256;
+    int it = 10;
 
-    int cores = 16; //temp
-    int n = 512;
-    int it = 1; //higher = more accurate
+    int opt;
+    while ((opt = getopt(argc, argv, "t:n:i:")) != -1)
+    {
+        switch (opt)
+        {
+            case 't':
+                nthreads = atoi(optarg);
+                break;
+            case 'n':
+                n = atoi(optarg);
+                break;
+            case 'i':
+                it = atoi(optarg);
+                break;
+        }
+    }
+
+
 
     srand(time(NULL));
-    bool multi = true; //single
-    if (!multi)
+    if (nthreads == 1)
     {
         pinToCore(0);
         double time = runMatrixMul(it, n);
@@ -68,9 +84,9 @@ int main(void)
     }
     else
     {
-        pthread_t threads[cores];
-        threadData threadDatas[cores];
-        for (int i = 0; i < cores; i++)
+        pthread_t threads[nthreads];
+        threadData threadDatas[nthreads];
+        for (int i = 0; i < nthreads; i++)
         {
             threadDatas[i].coreId = i;
             threadDatas[i].n = n;
@@ -84,7 +100,7 @@ int main(void)
             pthread_create(&threads[i], NULL, multiMatrixMul, &threadDatas[i]);
         }
         double totalCompute = 0.0;
-        for (int i = 0; i < cores; i++)
+        for (int i = 0; i < nthreads; i++)
         {
             pthread_join(threads[i], NULL);
             totalCompute += threadDatas[i].compute;
